@@ -113,6 +113,12 @@ export function load() {
 			default: 'title,date,categories,tags,coverImage,draft'
 		},
 		{
+			name: 'post-types',
+			type: 'list',
+			description: 'Post types to convert (empty for all)',
+			default: []
+		},
+		{
 			name: 'request-delay',
 			type: 'integer',
 			description: 'Delay between image file requests',

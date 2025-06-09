@@ -145,6 +145,18 @@ Allowed values:
 
 - A comma separated list with any of the following: `author`, `categories`, `coverImage`, `date`, `draft`, `excerpt`, `id`, `slug`, `tags`, `title`, `type`. You can rename a field by appending `:` and the alias to use. For example, `date:created` will rename `date` to `created`.
 
+### Specific content types
+
+```
+--post-types=post,page
+```
+
+Comma separated list of the content types to include in Markdown files. Leave empty to include all default content types.
+
+Allowed values:
+
+- A comma separated list: `post`, `page`, etc.
+
 ### Delay between image file requests?
 
 ```

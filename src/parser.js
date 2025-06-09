@@ -12,7 +12,13 @@ export async function parseFilePromise() {
 	const rssData = await data.load(content);
 	const allPostData = rssData.child('channel').children('item');
 
-	const postTypes = getPostTypes(allPostData);
+	let postTypes = getPostTypes(allPostData);
+	if (shared.config.postTypes?.length) {
+		postTypes = postTypes.filter((postType) =>
+			shared.config.postTypes.includes(postType)
+		);
+	}
+
 	const posts = collectPosts(allPostData, postTypes);
 
 	const images = [];
@@ -139,7 +145,7 @@ function collectScrapedImages(allPostData, postTypes) {
 	postTypes.forEach((postType) => {
 		getItemsOfType(allPostData, postType).forEach((postData) => {
 			const postId = postData.childValue('post_id');
-			
+
 			const postContent = postData.childValue('encoded');
 			const scrapedUrls = [...postContent.matchAll(/<img(?=\s)[^>]+?(?<=\s)src="(.+?)"[^>]*>/gi)].map((match) => match[1]);
 			scrapedUrls.forEach((scrapedUrl) => {

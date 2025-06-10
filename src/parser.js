@@ -117,6 +117,17 @@ function buildPost(data) {
 		// these are possibly set later in mergeImagesIntoPosts()
 		coverImage: undefined,
 		imageUrls: [],
+
+		metaContent: Object.fromEntries(
+  		shared.config.appendMeta.map((field) => {
+        const [key, alias] = field.split(':');
+        const value = getPostMetaValue(data, key);
+        if (value !== undefined && value !== null && value !== '') {
+          // treat the value
+          return [alias ?? key, translator.getPostContent(value)];
+        }
+      })
+		)
 	};
 }
 

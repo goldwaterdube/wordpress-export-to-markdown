@@ -120,6 +120,12 @@ export function load() {
 			default: []
 		},
 		{
+			name: 'append-meta',
+			type: 'list',
+			description: 'Meta fields to apend to the content as MDC components',
+			default: []
+		},
+		{
 			name: 'post-types',
 			type: 'list',
 			description: 'Post types to convert (empty for all)',

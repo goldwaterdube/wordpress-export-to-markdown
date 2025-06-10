@@ -122,6 +122,12 @@ async function loadMarkdownFilePromise(post) {
 	});
 
 	output += `---\n\n${post.content}\n`;
+
+	// for each post.metaContent object attribute, append to output
+	Object.entries(post.metaContent).forEach(([key, value]) => {
+		output += `\n\n::${key}\n${value}\n::\n`;
+	});
+
 	return output;
 }
 

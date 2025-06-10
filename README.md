@@ -153,6 +153,21 @@ Allowed values:
 
 Comma separated list of the WP post meta values to include in the frontmatter of Markdown files. Serialized PHP arrays get unserialized and converted to corresponding YAML structures.
 
+### Append WP post meta to Content
+
+```
+--append-meta=staff_sidebar:sidebar
+```
+
+Extract listed WP post meta and append it to content using MDC component syntax.
+
+e.g.
+```
+::sidebar
+WP meta content from 'staff_sidebar' post meta key converted to markdown
+::
+```
+
 ### Specific content types
 
 ```

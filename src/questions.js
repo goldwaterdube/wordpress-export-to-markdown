@@ -125,6 +125,12 @@ export function load() {
 			description: 'Meta fields to apend to the content as MDC components',
 			default: []
 		},
+    {
+      name: 'strip-shortcodes',
+      type: 'boolean',
+      description: 'Strip shortcodes from content',
+      default: false
+    },
 		{
 			name: 'post-types',
 			type: 'list',

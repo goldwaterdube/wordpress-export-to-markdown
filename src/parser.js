@@ -126,7 +126,7 @@ function buildPost(data) {
           // treat the value
           return [alias ?? key, translator.getPostContent(value)];
         }
-      })
+      }).filter(x => x)
 		)
 	};
 }

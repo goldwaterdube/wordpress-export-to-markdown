@@ -188,6 +188,18 @@ Allowed values:
 
 Comma separated list of the content types to exclude from Markdown files. Leave empty to include all default content types.
 
+### Strip shortcodes
+
+```
+--strip-shortcodes=true
+```
+
+Strip shortcodes from content converting the content therein into simple <div> tags.
+
+Allowed values:
+
+- `true` or `false`.
+
 ### Delay between image file requests?
 
 ```

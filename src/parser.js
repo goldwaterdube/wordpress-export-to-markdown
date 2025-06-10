@@ -5,6 +5,7 @@ import * as data from './data.js';
 import * as frontmatter from './frontmatter.js';
 import * as shared from './shared.js';
 import * as translator from './translator.js';
+import { unserialize } from 'php-serialize'
 
 export async function parseFilePromise() {
 	shared.logHeading('Parsing');
@@ -115,7 +116,7 @@ function buildPost(data) {
 
 		// these are possibly set later in mergeImagesIntoPosts()
 		coverImage: undefined,
-		imageUrls: []
+		imageUrls: [],
 	};
 }
 
@@ -127,7 +128,22 @@ function getPostDate(data) {
 function getPostMetaValue(data, key) {
 	const metas = data.children('postmeta');
 	const meta = metas.find((meta) => meta.childValue('meta_key') === key);
-	return meta ? meta.childValue('meta_value') : undefined;
+
+	const raw = meta ? meta.childValue('meta_value') : undefined;
+
+	// If it looks like a PHP-serialized array/object, deserialize it
+  if (typeof raw === 'string' && /^a:\d+:/.test(raw.trim())) {
+    try {
+      // Note: you must have installed `php-serialize`
+      const parsed = unserialize(raw)
+      return parsed
+    } catch (e) {
+      // fallback to the raw string if unserialization fails
+      console.log(`Failed to unserialize meta value for key "${key}": ${raw}`);
+    }
+  }
+
+	return raw;
 }
 
 function collectAttachedImages(allPostData) {
@@ -217,6 +233,16 @@ function populateFrontmatter(posts) {
 
 			post.frontmatter[alias ?? key] = frontmatterGetter(post);
 		});
+
+
+		// Handling for meta fields
+    shared.config.frontmatterMeta.forEach((field) => {
+      const [key, alias] = field.split(':');
+      const value = getPostMetaValue(post.data, key);
+      if (value !== undefined && value !== null && value !== '') {
+        post.frontmatter[alias ?? key] = value;
+      }
+    });
 	});
 }
 

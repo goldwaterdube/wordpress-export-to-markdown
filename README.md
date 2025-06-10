@@ -145,6 +145,14 @@ Allowed values:
 
 - A comma separated list with any of the following: `author`, `categories`, `coverImage`, `date`, `draft`, `excerpt`, `id`, `slug`, `tags`, `title`, `type`. You can rename a field by appending `:` and the alias to use. For example, `date:created` will rename `date` to `created`.
 
+### Frontmatter meta
+
+```
+--frontmatter-meta=rank_math_seo_score:seo_score,rank_math_contentai_score
+```
+
+Comma separated list of the WP post meta values to include in the frontmatter of Markdown files. Serialized PHP arrays get unserialized and converted to corresponding YAML structures.
+
 ### Specific content types
 
 ```

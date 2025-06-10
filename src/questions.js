@@ -113,6 +113,13 @@ export function load() {
 			default: 'title,date,categories,tags,coverImage,draft'
 		},
 		{
+			name: 'frontmatter-meta',
+			type: 'list',
+			description: 'Meta fields to add to frontmatter',
+			// e.g. 'rank_math_seo_score,rank_math_contentai_score'
+			default: []
+		},
+		{
 			name: 'post-types',
 			type: 'list',
 			description: 'Post types to convert (empty for all)',

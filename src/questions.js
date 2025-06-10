@@ -119,6 +119,12 @@ export function load() {
 			default: []
 		},
 		{
+			name: 'exclude-post-types',
+			type: 'list',
+			description: 'Post types to convert (empty for all)',
+			default: []
+		},
+		{
 			name: 'request-delay',
 			type: 'integer',
 			description: 'Delay between image file requests',

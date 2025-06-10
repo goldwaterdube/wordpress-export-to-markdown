@@ -157,6 +157,14 @@ Allowed values:
 
 - A comma separated list: `post`, `page`, etc.
 
+### Exclude specific content types
+
+```
+--exclude-post-types=nf_sub,et_pb_layout,acf-post-type,acf-field,acf-field-group,rm_content_editor,rank_math_schema
+```
+
+Comma separated list of the content types to exclude from Markdown files. Leave empty to include all default content types.
+
 ### Delay between image file requests?
 
 ```

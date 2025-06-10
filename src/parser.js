@@ -13,9 +13,16 @@ export async function parseFilePromise() {
 	const allPostData = rssData.child('channel').children('item');
 
 	let postTypes = getPostTypes(allPostData);
+
 	if (shared.config.postTypes?.length) {
 		postTypes = postTypes.filter((postType) =>
 			shared.config.postTypes.includes(postType)
+		);
+	}
+
+	if (shared.config.excludePostTypes?.length) {
+		postTypes = postTypes.filter((postType) =>
+			! shared.config.postTypes.includes(postType)
 		);
 	}
 

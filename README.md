@@ -148,10 +148,19 @@ Allowed values:
 ### Frontmatter meta
 
 ```
---frontmatter-meta=rank_math_seo_score:seo_score,rank_math_contentai_score
+--frontmatter-meta=rank_math_seo_score:seo.score,title:seo.title,rank_math_contentai_score
 ```
 
-Comma separated list of the WP post meta values to include in the frontmatter of Markdown files. Serialized PHP arrays get unserialized and converted to corresponding YAML structures.
+Comma separated list of the WP post meta values to include in the frontmatter of Markdown files. Serialized PHP arrays get unserialized and converted to corresponding YAML structures. Dotted notation for nested frontmatter placement is supported with the example above reuslting in the following output:
+
+```yaml
+---
+seo:
+  score: 90
+  title: SEO Title
+rank_math_contentai_score: 85
+---
+```
 
 ### Append WP post meta to Content
 
@@ -188,6 +197,15 @@ Allowed values:
 
 Comma separated list of the content types to exclude from Markdown files. Leave empty to include all default content types.
 
+### Specific categories
+
+```
+--include-categories=news,resources
+--exclude-categories=updates
+```
+
+Include or exclude content from specific categories based on those slugs.
+
 ### Strip shortcodes
 
 ```
@@ -195,6 +213,18 @@ Comma separated list of the content types to exclude from Markdown files. Leave 
 ```
 
 Strip shortcodes from content converting the content therein into simple <div> tags.
+
+Allowed values:
+
+- `true` or `false`.
+
+### Polylang translation sets support
+
+```
+--polylang=true
+```
+
+Include translations of posts in Markdown files. Translation sets will be produced with locale suffixes. E.g. `index.en.md` and `index.fr.md` for English- and French-language versions of the content.
 
 Allowed values:
 

@@ -8,39 +8,113 @@ import * as translator from './translator.js';
 import { unserialize } from 'php-serialize'
 
 export async function parseFilePromise() {
-	shared.logHeading('Parsing');
-	const content = await fs.promises.readFile(shared.config.input, 'utf8');
-	const rssData = await data.load(content);
-	const allPostData = rssData.child('channel').children('item');
+  shared.logHeading('Parsing');
 
-	let postTypes = getPostTypes(allPostData);
+  // 1) Load and parse the XML
+  const content = await fs.promises.readFile(shared.config.input, 'utf8');
+  const rssData = await data.load(content);
+  const allPostData = rssData.child('channel').children('item');
 
-	if (shared.config.postTypes?.length) {
-		postTypes = postTypes.filter((postType) =>
-			shared.config.postTypes.includes(postType)
-		);
-	}
+  // 2) Determine which post types to include/exclude
+  let postTypes = getPostTypes(allPostData);
+  if (shared.config.postTypes?.length) {
+    postTypes = postTypes.filter(pt => shared.config.postTypes.includes(pt));
+  }
+  if (shared.config.excludePostTypes?.length) {
+    postTypes = postTypes.filter(pt => !shared.config.excludePostTypes.includes(pt));
+  }
 
-	if (shared.config.excludePostTypes?.length) {
-		postTypes = postTypes.filter((postType) =>
-			! shared.config.postTypes.includes(postType)
-		);
-	}
+  // 3) Collect the basic posts
+  let posts = collectPosts(allPostData, postTypes);
 
-	const posts = collectPosts(allPostData, postTypes);
+  // 3) category‐based filtering
+  if (shared.config.includeCategories.length) {
+    posts = posts.filter(post =>
+      frontmatter.categories(post)?.some(cat =>
+        shared.config.includeCategories.includes(cat)
+      )
+    );
+  }
+  if (shared.config.excludeCategories.length) {
+    posts = posts.filter(post =>
+      !frontmatter.categories(post)?.some(cat =>
+         shared.config.excludeCategories.includes(cat)
+      )
+    );
+  }
 
-	const images = [];
-	if (shared.config.saveImages === 'attached' || shared.config.saveImages === 'all') {
-		images.push(...collectAttachedImages(allPostData));
-	}
-	if (shared.config.saveImages === 'scraped' || shared.config.saveImages === 'all') {
-		images.push(...collectScrapedImages(allPostData, postTypes));
-	}
+  // 4) Collect images exactly as before
+  const images = [];
+  if (shared.config.saveImages === 'attached' || shared.config.saveImages === 'all') {
+    images.push(...collectAttachedImages(allPostData));
+  }
+  if (shared.config.saveImages === 'scraped' || shared.config.saveImages === 'all') {
+    images.push(...collectScrapedImages(allPostData, postTypes));
+  }
+  mergeImagesIntoPosts(images, posts);
 
-	mergeImagesIntoPosts(images, posts);
-	populateFrontmatter(posts);
+  // 5) Build a lookup by post ID so we can enrich posts in place
+  const postById = Object.fromEntries(posts.map(p => [String(p.id), p]));
 
-	return posts;
+    // 6) Parse all <term> entries (namespace stripped) for post_translations groups
+  const termMappings = {};
+  const termNodes = rssData.child('channel').children('term') || [];
+  for (const term of termNodes) {
+    const taxonomy = term.childValue('term_taxonomy');
+    if (taxonomy !== 'post_translations') continue;
+
+    const slug    = term.childValue('term_slug');
+    const rawDesc = term.childValue('term_description') || '';
+
+    try {
+      const parsed = unserialize(rawDesc);
+      // Normalize IDs to strings
+      termMappings[slug] = Object.fromEntries(
+        Object.entries(parsed).map(([lang, id]) => [lang, String(id)])
+      );
+    } catch (err) {
+      console.warn(`⚠️ Could not parse term_description for ${slug}`, err);
+    }
+  }
+
+  // 7) Walk each <item> again to pull out Polylang categories
+  for (const item of allPostData) { // use just 'posts', pre-filtered?
+    const id = item.childValue('post_id');
+    const post = postById[id];
+    if (!post) continue;
+
+    // Initialize polylang container
+    post.polylang = {
+      language: null,
+      groupSlug: null,
+      translationMap: null
+    };
+
+    // Read all <category> tags on this item (xml2js puts them in item.category[])
+    const cats = item.children('category') || [];
+    for (const cat of cats) {
+      // xml2js stores attributes under `.$`
+      const domain   = cat.attribute('domain');
+      const nicename = cat.attribute('nicename');
+      if (domain === 'language') {
+        post.polylang.language = nicename;
+      }
+      if (domain === 'post_translations') {
+        post.polylang.groupSlug = nicename;
+      }
+    }
+
+    // Attach the full translationMap if we have one
+    const gs = post.polylang.groupSlug;
+    if (gs && termMappings[gs]) {
+      post.polylang.translationMap = termMappings[gs];
+    }
+  }
+
+  // 8) Finally, build frontmatter (and any other per-post enrichment)
+  populateFrontmatter(posts);
+
+  return posts;
 }
 
 function getPostTypes(allPostData) {
@@ -98,6 +172,49 @@ function collectPosts(allPostData, postTypes) {
 	return allPosts;
 }
 
+/**
+ * allPosts: an array of post objects, each with:
+ *   - post.id            (string or number)
+ *   - post.slug          (string)
+ *   - post.language      (string or null)
+ *   - post._pllTranslations (object or null)
+ *
+ * Returns: an object whose keys are groupKey (string),
+ * and whose values are arrays of post objects in that group.
+ */
+ export function buildTranslationGroups(allPosts) {
+   const groups = {};
+
+   for (const post of allPosts) {
+     let key;
+
+     const tm = post.polylang.translationMap;
+     if (tm && Object.keys(tm).length > 0) {
+       // tm values are post IDs as strings
+       const ids = Object.values(tm).slice().sort();
+       key = ids.join(',');
+     } else {
+       key = String(post.id);
+     }
+
+     if (!groups[key]) groups[key] = [];
+     groups[key].push(post);
+   }
+
+   return groups;
+ }
+
+export function chooseBaseSlug(postsInGroup, defaultLangCode) {
+  // postsInGroup is an array of post objects, each with post.slug and post.language.
+  // 1. Try to find the post whose post.language === defaultLangCode:
+  let candidate = postsInGroup.find(p => p.language === defaultLangCode);
+  if (candidate) {
+    return candidate.slug;
+  }
+  // 2. If none matched (rare if the group didn’t contain the default), pick the first post’s slug:
+  return postsInGroup[0].slug;
+}
+
 function buildPost(data) {
 	return {
 		// full raw post data
@@ -109,6 +226,8 @@ function buildPost(data) {
 		// particularly useful values for all sorts of things
 		type: data.childValue('post_type'),
 		id: data.childValue('post_id'),
+		link: data.childValue('link'),
+		isPublished: data.childValue('status') === 'publish',
 		isDraft: data.childValue('status') === 'draft',
 		slug: decodeURIComponent(data.childValue('post_name')),
 		date: getPostDate(data),
@@ -231,6 +350,27 @@ function mergeImagesIntoPosts(images, posts) {
 	});
 }
 
+/**
+ * Deep-sets `obj[path[0]][path[1]]… = value`, creating intermediate
+ * objects if they don’t yet exist.
+ *
+ * @param {object} obj    The object to modify
+ * @param {string[]} path Array of keys, e.g. ['seo','title']
+ * @param {*} value       The value to assign
+ */
+function setNested(obj, path, value) {
+  let cur = obj;
+  for (let i = 0; i < path.length - 1; i++) {
+    const key = path[i];
+    if (cur[key] == null || typeof cur[key] !== 'object') {
+      cur[key] = {};
+    }
+    cur = cur[key];
+  }
+  // final segment
+  cur[path[path.length - 1]] = value;
+}
+
 function populateFrontmatter(posts) {
 	posts.forEach((post) => {
 		post.frontmatter = {};
@@ -248,10 +388,16 @@ function populateFrontmatter(posts) {
 
 		// Handling for meta fields
     shared.config.frontmatterMeta.forEach((field) => {
-      const [key, alias] = field.split(':');
-      const value = getPostMetaValue(post.data, key);
+      // split “metaKey:alias.path” or just “metaKey”
+      const [metaKey, rawAlias] = field.split(':').map(s => s.trim());
+      const alias = rawAlias || metaKey;
+
+      const value = getPostMetaValue(post.data, metaKey);
       if (value !== undefined && value !== null && value !== '') {
-        post.frontmatter[alias ?? key] = value;
+        // build the path segments for nested assignment:
+        const pathSegments = alias.split('.');
+        // deep‐assign into post.frontmatter
+        setNested(post.frontmatter, pathSegments, value);
       }
     });
 	});

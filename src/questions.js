@@ -131,6 +131,18 @@ export function load() {
       description: 'Strip shortcodes from content',
       default: false
     },
+    {
+      name: 'polylang',
+      type: 'boolean',
+      description: 'Process Polylang translation sets',
+      default: false
+    },
+    {
+      name: 'polylang-default-language',
+      type: 'string',
+      description: 'Polylang translation set to process',
+      default: 'en'
+    },
 		{
 			name: 'post-types',
 			type: 'list',
@@ -143,6 +155,19 @@ export function load() {
 			description: 'Post types to convert (empty for all)',
 			default: []
 		},
+    {
+      name: 'include-categories',
+      type: 'list',
+      description: 'Only export posts in these category slugs (domain="category")',
+      // e.g. 'news,resources,updates'
+      default: [],
+    },
+    {
+      name: 'exclude-categories',
+      type: 'list',
+      description: 'Exclude posts in these categories',
+      default: [],
+    },
 		{
 			name: 'request-delay',
 			type: 'integer',
